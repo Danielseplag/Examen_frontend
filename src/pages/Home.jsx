@@ -14,6 +14,9 @@ const Home = () => (
         <p style={{ color: '#94a3b8', fontSize: '1.1rem', maxWidth: 500, margin: '1.5rem auto 2.5rem' }}>
           Consulta, filtra y explora licitaciones de Mercado Público en una interfaz clara y accesible.
         </p>
+        <br></br>
+        <br></br>
+        <p>Consulta y navega en nuestro listado de licitaciones disponibles en el Mercado Público! </p>
         <div className="d-flex gap-3 justify-content-center">
           <a href="/licitaciones" className="btn btn-primary">Ver Licitaciones</a>
           <a href="/proveedores" className="btn btn-outline">Buscar Proveedor</a>
