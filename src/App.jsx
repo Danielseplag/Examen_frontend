@@ -1,186 +1,250 @@
-
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import {useProveedor} from './hooks/useProveedor.js';
+import {useLicitaciones} from './hooks/useLicitaciones.js';
+import {usePaginacion} from './hooks/usePaginacion.js';
+import {useDetalleLicitacion} from './hooks/useDetalleLicitaciones.js';
+import {formatearFecha, fechaParaAPI} from './utils/formatters.js';
 import Home from './pages/Home';
 
-const PageShell = ({ title, description, icon, links, gradient }) => (
-  <div style={{
-    minHeight: '100vh',
-    background: '#000',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '2rem',
-    position: 'relative',
-    overflow: 'hidden'
-  }}>
-    {/* Ambient blobs */}
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', top: '10%', left: '10%', width: 400, height: 400, background: gradient[0], borderRadius: '50%', filter: 'blur(100px)', opacity: 0.15 }} />
-      <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: 300, height: 300, background: gradient[1], borderRadius: '50%', filter: 'blur(100px)', opacity: 0.12 }} />
-    </div>
+const ESTADOS_LICITACION = [
+  { value: 'activas', label: 'Activas' },
+  { value: 'publicada', label: 'Publicadas' },
+  { value: 'adjudicada', label: 'Adjudicadas' },
+  { value: 'desierta', label: 'Desiertas' },
+  { value: 'revocada', label: 'Revocadas' },
+];
 
-    <div style={{ textAlign: 'center', maxWidth: 640, position: 'relative', zIndex: 1 }}>
+const BackButton = () => (
+  <Link
+    to="/"
+    className="btn btn-outline-info mb-4 d-inline-flex align-items-center gap-2"
+    style={{ borderRadius: '999px', padding: '0.4rem 1.1rem' }}
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+      <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+    </svg>
+    Volver al inicio
+  </Link>
+);
 
-      {/* Icon circle */}
-      <div style={{
-        width: 80, height: 80,
-        background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
-        borderRadius: '50%',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '2rem', margin: '0 auto 1.5rem',
-        boxShadow: `0 0 40px ${gradient[0]}55`
-      }}>
-        {icon}
-      </div>
+const Licitaciones = () => {
+  const hoy = new Date().toISOString().slice(0, 10);
+  const [fecha, setFecha] = useState(hoy);
+  const [estado, setEstado] = useState('activas');
+  const { licitaciones, loading, error, buscar } = useLicitaciones();
+  const { itemsPagina, paginaActual, totalPaginas, hayPaginacion, irPagina } = usePaginacion(licitaciones);
 
-      {/* Title */}
-      <h1 style={{
-        fontSize: 'clamp(2rem, 5vw, 3rem)',
-        fontWeight: 900,
-        background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-        marginBottom: '0.75rem',
-        letterSpacing: '-1px'
-      }}>
-        {title}
-      </h1>
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const fechaDate = new Date(`${fecha}T00:00:00`);
+    buscar(fechaParaAPI(fechaDate), estado);
+  };
 
-      {/* Description */}
-      <p style={{
-        color: '#94a3b8', fontSize: '1rem',
-        lineHeight: 1.75, marginBottom: '2.5rem',
-        maxWidth: 480, margin: '0 auto 2.5rem'
-      }}>
-        {description}
-      </p>
+  return (
+    <div style={{ minHeight: '100vh', background: '#000', color: '#f1f5f9', paddingTop: '6rem' }}>
+      <div className="container">
+        <BackButton />
+        <h1 className="gradient-text fw-bold mb-4">Licitaciones</h1>
 
-      {/* Badge */}
-      <div style={{
-        display: 'inline-block',
-        background: 'rgba(6,182,212,0.1)',
-        border: '1px solid rgba(6,182,212,0.3)',
-        borderRadius: 999,
-        padding: '0.3rem 1rem',
-        fontSize: '0.75rem',
-        color: '#06b6d4',
-        fontWeight: 600,
-        letterSpacing: '0.5px',
-        marginBottom: '2rem'
-      }}>
-        🔗 ENDPOINTS DISPONIBLES
-      </div>
-
-      {/* Links */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {links.map(({ label, url }, i) => (
-          <a
-            key={i}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: 'none' }}
-          >
-            <div style={{
-              background: 'rgba(15,23,42,0.8)',
-              border: `1px solid ${gradient[0]}44`,
-              borderRadius: 12,
-              padding: '1rem 1.25rem',
-              textAlign: 'left',
-              transition: 'all 0.3s ease',
-              cursor: 'pointer',
-              backdropFilter: 'blur(10px)',
-            }}
-              onMouseEnter={e => {
-                e.currentTarget.style.border = `1px solid ${gradient[0]}99`;
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = `0 8px 30px ${gradient[0]}22`;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.border = `1px solid ${gradient[0]}44`;
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+        <form onSubmit={handleSubmit} className="row g-2 mb-4" aria-label="Buscar licitaciones">
+          <div className="col-sm-5 col-md-4">
+            <label htmlFor="fecha" className="form-label">Fecha de publicación</label>
+            <input
+              id="fecha"
+              type="date"
+              className="form-control"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              required
+            />
+          </div>
+          <div className="col-sm-5 col-md-4">
+            <label htmlFor="estado" className="form-label">Estado</label>
+            <select
+              id="estado"
+              className="form-select"
+              value={estado}
+              onChange={(e) => setEstado(e.target.value)}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '0.9rem' }}>{label}</span>
-                <span style={{ color: gradient[0], fontSize: '0.75rem', fontWeight: 600 }}>GET ↗</span>
-              </div>
-              <div style={{
-                color: '#64748b', fontSize: '0.75rem',
-                wordBreak: 'break-all', fontFamily: 'monospace',
-                lineHeight: 1.5
-              }}>
-                {url}
+              {ESTADOS_LICITACION.map((opcion) => (
+                <option key={opcion.value} value={opcion.value}>{opcion.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-sm-2 col-md-4 d-flex align-items-end">
+            <button type="submit" className="btn btn-primary w-100" disabled={loading}>
+              {loading ? 'Buscando...' : 'Buscar'}
+            </button>
+          </div>
+        </form>
+
+        {loading && (
+          <div className="ls-loader" aria-live="polite">
+            <div className="ls-spinner" role="status"></div>
+            <p>Cargando licitaciones...</p>
+          </div>
+        )}
+
+        {error && (
+          <div role="alert" className="alert alert-danger">{error}</div>
+        )}
+
+        {!loading && !error && licitaciones.length === 0 && (
+          <p aria-live="polite">No hay licitaciones para mostrar. Ajusta la fecha o el estado y presiona "Buscar".</p>
+        )}
+
+        <div className="row g-4">
+          {itemsPagina.map((lic) => (
+            <div className="col-md-4" key={lic.CodigoExterno}>
+              <div className="card bg-dark text-light border-info h-100">
+                <div className="card-body d-flex flex-column">
+                  <h5>{lic.Nombre}</h5>
+                  <p className="text-muted mb-1">Código: {lic.CodigoExterno}</p>
+                  <p>Cierre: {formatearFecha(lic.FechaCierre)}</p>
+                  <Link to={`/detalle/${lic.CodigoExterno}`} className="btn btn-primary mt-auto">
+                    Ver detalle
+                  </Link>
+                </div>
               </div>
             </div>
-          </a>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* Back link */}
-      <a href="/" style={{
-        display: 'inline-block', marginTop: '2.5rem',
-        color: '#475569', fontSize: '0.85rem',
-        textDecoration: 'none', transition: 'color 0.2s'
-      }}
-        onMouseEnter={e => e.target.style.color = '#06b6d4'}
-        onMouseLeave={e => e.target.style.color = '#475569'}
-      >
-        ← Volver al inicio
-      </a>
+        {hayPaginacion && (
+          <nav aria-label="Paginación de licitaciones" className="ls-pagination mt-4">
+            <ul className="pagination justify-content-center">
+              <li className={`page-item ${paginaActual === 1 ? 'disabled' : ''}`}>
+                <button className="page-link" onClick={() => irPagina(paginaActual - 1)} aria-label="Página anterior">
+                  Anterior
+                </button>
+              </li>
+              <li className="page-item active">
+                <span className="page-link">{paginaActual} / {totalPaginas}</span>
+              </li>
+              <li className={`page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`}>
+                <button className="page-link" onClick={() => irPagina(paginaActual + 1)} aria-label="Página siguiente">
+                  Siguiente
+                </button>
+              </li>
+            </ul>
+          </nav>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Detalle = () => {
+  const { codigo } = useParams();
+  const { licitacion, loading, error, buscar } = useDetalleLicitacion();
+
+  useEffect(() => {
+    buscar(codigo);
+  }, [codigo, buscar]);
+
+  console.log('Detalle licitación:', licitacion);
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#000', color: '#f1f5f9', paddingTop: '6rem' }}>
+      <div className="container">
+        <Link
+          to="/licitaciones"
+          className="btn btn-outline-info mb-4 d-inline-flex align-items-center gap-2"
+          style={{ borderRadius: '999px', padding: '0.4rem 1.1rem' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+            <path fillRule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+          </svg>
+          Volver a Licitaciones
+        </Link>
+
+        <h1 className="gradient-text fw-bold mb-4">Detalle de Licitación</h1>
+
+        {loading && (
+          <div className="ls-loader" aria-live="polite">
+            <div className="ls-spinner" role="status"></div>
+            <p>Cargando detalle...</p>
+          </div>
+        )}
+
+        {error && (
+          <div role="alert" className="alert alert-danger">{error}</div>
+        )}
+
+        {!loading && !error && licitacion && (
+          <div className="card bg-dark text-light border-info">
+            <div className="card-body">
+              <h3>{licitacion.Nombre}</h3>
+              <p className="text-muted">Código: {licitacion.CodigoExterno}</p>
+              <hr />
+              <p><strong>Estado:</strong> {licitacion.Estado}</p>
+              <p><strong>Fecha de cierre:</strong> {formatearFecha(licitacion.FechaCierre)}</p>
+              {licitacion.Organismo && (
+                <p><strong>Organismo:</strong> {licitacion.Organismo.NombreOrganismo}</p>
+              )}
+              {licitacion.Items?.Listado?.[0]?.Descripcion && (
+                <p><strong>Descripción:</strong> {licitacion.Items.Listado[0].Descripcion}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Proveedores = () => {
+  const [rut, setRut] = useState('');
+  const { proveedor, loading, error, buscar } = useProveedor();
+
+  return (
+  <div style={{ minHeight: '100vh', background: '#000', color: '#f1f5f9', paddingTop: '6rem' }}>
+    <div className="container">
+      <BackButton />
+
+      <h1 className="gradient-text fw-bold mb-4">Buscar Proveedor
+      </h1>
+      
+      
+        <div className="d-flex gap-2 mb-4">
+          <input
+          className="form-control"
+          placeholder="12.345.678-9"
+          value={rut}
+          onChange={(e) => setRut(e.target.value)}
+          />
+          <button className="btn btn-primary" onClick={() => buscar(rut)}>
+            Buscar
+          </button>
+        </div>
+    
+
+        {loading && <p>Cargando proveedor...</p>}
+
+        {error && <p>Error: {error}</p>}
+
+        {proveedor && (
+          <div className="card bg-dark text-light border-info">
+            <div className="card-body">
+              <h3>{proveedor.NombreEmpresa}</h3>
+              <p>Código: {proveedor.CodigoEmpresa}</p>
+            </div>
+          </div>
+        )}
     </div>
   </div>
-);
-
-const Licitaciones = () => (
-  <PageShell
-    title="Licitaciones"
-    icon="📋"
-    gradient={['#06b6d4', '#0ea5e9']}
-    description="Listado completo de licitaciones disponibles en Mercado Público, filtradas por fecha y estado en tiempo real."
-    links={[
-      { label: "API Mercado Público", url: "https://api.mercadopublico.cl/" },
-      { label: "Listado de Licitaciones", url: "https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?fecha=ddmmaaaa&estado=name&ticket=cod" },
-    ]}
-  />
-);
-
-const Detalle = () => (
-  <PageShell
-    title="Detalle de Licitación"
-    icon="🔍"
-    gradient={['#8b5cf6', '#6366f1']}
-    description="Vista completa de cada licitación: montos, fechas, bases y condiciones. Navegación directa desde Mercado Público."
-    links={[
-      { label: "Búsqueda de Licitaciones", url: "https://www.mercadopublico.cl/Home/BusquedaLicitacion" },
-      { label: "Listado de Licitaciones (API)", url: "https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?fecha=ddmmaaaa&estado=name&ticket=cod" },
-    ]}
-  />
-);
-
-const Proveedores = () => (
-  <PageShell
-    title="Proveedores"
-    icon="🏢"
-    gradient={['#22c55e', '#10b981']}
-    description="Búsqueda de proveedores por RUT con historial de participación en licitaciones públicas de ChileCompra."
-    links={[
-      { label: "Datos de Proveedores – ChileCompra", url: "https://datos-abiertos.chilecompra.cl/organismos-proveedores" },
-    ]}
-  />
-);
+)};
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/"             element={<Home />} />
+        <Route path="/" element={<Home />} />
         <Route path="/licitaciones" element={<Licitaciones />} />
-        <Route path="/detalle"      element={<Detalle />} />
-        <Route path="/proveedores"  element={<Proveedores />} />
-        <Route path="*"             element={<Home />} />
+        <Route path="/detalle/:codigo" element={<Detalle />} />
+        <Route path="/proveedores" element={<Proveedores />} />
+        <Route path="*" element={<Home />} />
       </Routes>
     </BrowserRouter>
   );
